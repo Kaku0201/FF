@@ -114,7 +114,7 @@ async def before_2350():
     print("✅ at_2350 태스크 시작")
 
 # — 슬래시 커맨드: 채널 설정 —
-@bot.tree.command(name="채널설정", description="알림 채널을 설정합니다")
+@bot.tree.command(name="setchannel", description="알림 채널을 설정합니다")
 @discord.app_commands.default_permissions(administrator=True)
 async def setchannel(interaction: discord.Interaction, channel: discord.TextChannel):
     config["channel_id"] = channel.id
@@ -122,7 +122,7 @@ async def setchannel(interaction: discord.Interaction, channel: discord.TextChan
     await interaction.response.send_message(f"✅ 알림 채널을 {channel.mention} 로 설정했습니다.", ephemeral=True)
 
 # — 슬래시 커맨드: 토글 알림 —
-@bot.tree.command(name="알림설정", description="알림을 켜거나 끕니다")
+@bot.tree.command(name="toggle", description="알림을 켜거나 끕니다")
 @discord.app_commands.default_permissions(administrator=True)
 @app_commands.describe(
     alert="알림 종류 (전장알림, 청약신청알림, 청약추첨알림)",
@@ -133,13 +133,13 @@ async def setchannel(interaction: discord.Interaction, channel: discord.TextChan
         app_commands.Choice(name="전장알림", value="battle"),
         app_commands.Choice(name="청약신청알림", value="application"),
         app_commands.Choice(name="청약추첨알림", value="raffle"),
-    ]
+    ],
 )
 @app_commands.choices(
     state=[
         app_commands.Choice(name="on", value="on"),
         app_commands.Choice(name="off", value="off"),
-    ]
+    ],
 )
 async def toggle(interaction: discord.Interaction, alert: str, state: str):
     enabled = (state == "on")
@@ -148,6 +148,36 @@ async def toggle(interaction: discord.Interaction, alert: str, state: str):
     await interaction.response.send_message(
         f"✅ `{alert}` 알림을 {'활성화' if enabled else '비활성화'}했습니다.", ephemeral=True
     )
+
+# — 슬래시 커맨드: 즉시 알림 (/알려줘) —
+@bot.tree.command(name="알려줘", description="오늘의 전장 또는 청약 상황을 바로 보여줍니다")
+@app_commands.describe(
+    choice="어떤 정보를 원하는지 선택하세요: 전장 또는 청약"
+)
+@app_commands.choices(
+    choice=[
+        app_commands.Choice(name="전장", value="battle"),
+        app_commands.Choice(name="청약", value="application"),
+    ]
+)
+async def 알려줘(interaction: discord.Interaction, choice: str):
+    today = datetime.now(KST).date()
+    # 전장 정보
+    if choice == "battle":
+        idx = (today - BASE_DATE).days % len(BATTLEFIELDS)
+        msg = f"오늘의 전장은 [{BATTLEFIELDS[idx]}] 입니다. 🎮"
+    # 청약 정보
+    else:
+        cycle_day = (today - CYCLE_BASE).days % CYCLE_LEN
+        if cycle_day < APP_LEN:
+            start, end = today, today + timedelta(days=APP_LEN-1-cycle_day)
+            msg = f"🔔 청약 신청날 [{fmt(today - timedelta(days=cycle_day))} ~ {fmt(today - timedelta(days=cycle_day) + timedelta(days=APP_LEN-1))}] 현재 {cycle_day+1}일차입니다."
+        else:
+            # 추첨 기간
+            start = (today - timedelta(days=(cycle_day - APP_LEN)))
+            end = start + timedelta(days=RAFFLE_LEN-1)
+            msg = f"🔔 청약 추첨확인 [{fmt(start)} ~ {fmt(end)}] 현재 {cycle_day-APP_LEN+1}일차입니다."
+    await interaction.response.send_message(msg, ephemeral=True)
 
 # — 봇 이벤트 & 실행 —
 @bot.event
@@ -162,10 +192,3 @@ async def on_ready():
 
 if __name__ == "__main__":
     bot.run(TOKEN)
-
-@bot.command()
-@commands.is_owner()  # 본인만 쓸 수 있게 제한
-async def test_notify(ctx):
-    await at_midnight()  # 자정 알림 부분 바로 실행
-    await at_2350()      # 마감전 알림 부분 바로 실행
-    await ctx.send("✅ 테스트 알림 완료")
