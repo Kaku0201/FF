@@ -113,7 +113,7 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
 
 # 채널 설정 (/setchannel)
-@bot.tree.command(name="setchannel", description="알림 채널을 설정합니다.")
+@bot.tree.command(name="채널설정", description="알림 채널을 설정합니다.")
 @app_commands.default_permissions(administrator=True)
 async def setchannel(interaction: discord.Interaction, channel: discord.TextChannel):
     config["channel_id"] = channel.id
@@ -121,7 +121,7 @@ async def setchannel(interaction: discord.Interaction, channel: discord.TextChan
     await interaction.response.send_message(f"✅ 알림 채널을 {channel.mention}로 설정했습니다.", ephemeral=True)
 
 # 알림 토글 (/toggle)
-@bot.tree.command(name="toggle", description="알림을 켜거나 끕니다.")
+@bot.tree.command(name="알림설정", description="알림을 켜거나 끕니다.")
 @app_commands.default_permissions(administrator=True)
 @app_commands.describe(alert="알림 종류", state="on 또는 off")
 @app_commands.choices(alert=[
